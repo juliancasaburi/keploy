@@ -1,0 +1,24 @@
+FROM ubuntu:latest as build
+RUN apt-get update && \
+    apt-get install -y python3 python3-pip && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY . ./
+RUN if [ -f "requirements.txt" ]; then pip install --no-cache-dir -r requirements.txt; fi
+COPY keploy-v2 /usr/local/bin/keploy-v2
+
+FROM ubuntu:latest as runtime
+RUN apt-get update && \
+    apt-get install -y curl lsof sudo nano python3 python3-pip && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+COPY --from=build /app /app
+COPY --from=build /usr/local/lib/python3.10/dist-packages /usr/local/lib/python3.10/dist-packages
+COPY --from=build /usr/local/bin/keploy-v2 /usr/local/bin/keploy-v2
+RUN chmod +x /usr/local/bin/keploy-v2
+WORKDIR /app
+ENV PYTHONUNBUFFERED 1
+
+CMD ["sleep", "infinity"]

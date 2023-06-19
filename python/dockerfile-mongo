@@ -1,0 +1,7 @@
+FROM mongo:latest
+
+ENV MONGO_INITDB_DATABASE=animal_db
+
+COPY init-db.js /docker-entrypoint-initdb.d/init-db.js
+
+EXPOSE 27017

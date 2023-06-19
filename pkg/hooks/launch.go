@@ -159,7 +159,8 @@ func runApp(appCmd string, isDocker bool) error {
 		parts := strings.Fields(appCmd)
 		cmd = exec.Command(parts[0], parts[1:]...)
 	} else {
-		cmd = exec.Command(appCmd)
+		parts := strings.Fields(appCmd)
+		cmd = exec.Command(parts[0], parts[1:]...)	
 	}
 
 	// Set the output of the command
@@ -168,6 +169,7 @@ func runApp(appCmd string, isDocker bool) error {
 
 	// Run the command, this handles non-zero exit code get from application.
 	err := cmd.Run()
+	fmt.Println(err)
 	if err != nil {
 		return err
 	}
@@ -378,7 +380,8 @@ func parseToInt32(str string) (int32, error) {
 // An application can launch as many child processes as it wants but here we are only handling for 15 child process.
 func getAppPIDs(appCmd string) ([15]int32, error) {
 	// Getting pid of the command
-	cmdPid, err := getCmdPid(appCmd)
+	parts := strings.Fields(appCmd)
+	cmdPid, err := getCmdPid(parts[0])
 	if err != nil {
 		return [15]int32{}, fmt.Errorf("failed to get the pid of the running command: %v\n", err)
 	}
@@ -451,13 +454,18 @@ func getCmdPid(commandName string) (int, error) {
 
 	println("Executing the command....")
 	output, err := cmd.Output()
+	fmt.Println(output)
 	if err != nil {
 		fmt.Errorf("failed to execute the command: %v", commandName)
 		return 0, err
 	}
 
-	println("pidof the cmd is:", string(output))
+
+
+	fmt.Println("pidof the cmd is:", string(output))
 	pidStr := strings.TrimSpace(string(output))
+	pidStrings := strings.Split(pidStr, " ")
+	pidStr = pidStrings[2]
 
 	pid, err := strconv.Atoi(pidStr)
 	if err != nil {
