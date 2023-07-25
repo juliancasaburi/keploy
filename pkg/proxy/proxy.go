@@ -27,6 +27,7 @@ import (
 	"go.keploy.io/server/pkg/models"
 	"go.keploy.io/server/pkg/proxy/integrations/httpparser"
 	"go.keploy.io/server/pkg/proxy/integrations/mongoparser"
+	"go.keploy.io/server/pkg/proxy/integrations/oracleparser"
 	"go.keploy.io/server/pkg/proxy/util"
 	"go.uber.org/zap"
 
@@ -646,7 +647,6 @@ func (ps *ProxySet) handleConnection(conn net.Conn, port uint32) {
 		// }
 	}
 
-
 	switch {
 	case httpparser.IsOutgoingHTTP(buffer):
 		// capture the otutgoing http text messages]
@@ -673,6 +673,9 @@ func (ps *ProxySet) handleConnection(conn net.Conn, port uint32) {
 		// for _, v := range deps {
 		// 	ps.hook.AppendDeps(v)
 		// }
+	case oracleparser.IsOutgoingOracle(buffer):
+		fmt.Println("Succesful")
+		oracleparser.ProcessOraclePackets(buffer, conn, dst, ps.hook, ps.logger, &(ps.FilterPid), port, destInfo.KernelPid)
 	default:
 		fmt.Println("into default desp mode, before passing")
 		err = callNext(buffer, conn, dst, ps.logger)

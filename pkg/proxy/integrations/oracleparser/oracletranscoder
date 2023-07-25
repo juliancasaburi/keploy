@@ -1,0 +1,240 @@
+package oracleparser
+
+import (
+	"encoding/binary"
+	"fmt"
+
+	"github.com/sijms/go-ora/v2/network"
+	"go.keploy.io/server/pkg/models"
+)
+
+
+
+// func DecodeAuthMessagePhaseOne(Packets [][]byte, isRequest bool) (models.OracleHeader, interface{}, bool, models.DataPacketType, error) {
+// 	var packetData []byte
+// 	var packetLength interface{}
+// 	for _, slice := range Packets {
+// 		packetData = append(packetData, slice...)
+// 	}
+// 	if Version >= 315 {
+// 		packetLength = binary.BigEndian.Uint32(packetData[0:])
+// 	} else {
+// 		packetLength = binary.BigEndian.Uint16(packetData[0:])
+// 	}
+// 	requestHeader := models.OracleHeader{
+// 		PacketLength: packetLength,
+// 		PacketType:   network.PacketType(packetData[4]),
+// 		PacketFlag:   packetData[5],
+// 		Version:      Version,
+// 	}
+// 	requestMessage := models.OracleDataMessage{
+// 		DATA_OFFSET:       10,
+// 		DATA_MESSAGE_TYPE: models.OracleFunctionDataMesssageType,
+// 	}
+
+// 	oracleFunctionTypeDataMessage := models.OracleFuntionTypeDataMessage{
+// 		FUNCTION_CODE:   models.FunctionType(packetData[11]),
+// 		SEQUENCE_NUMBER: packetData[12],
+// 	}
+
+// 	oracleAuthDataMessagePhaseOne := models.OracleAuthDataMessagePhaseOne{}
+// 	oracleAuthDataMessagePhaseOne.HAS_USER = packetData[13]
+// 	index := 14
+// 	var userByteLength uint32
+// 	userByteLength, index = writeUB4(packetData, index)
+// 	oracleAuthDataMessagePhaseOne.USER_BYTE_LENGTH = uint32(userByteLength)
+// 	var authMode uint32
+// 	authMode, index = writeUB4(packetData, index)
+// 	oracleAuthDataMessagePhaseOne.AUTH_MODE = models.AuthMode(authMode)
+// 	index += 1
+// 	var numPair uint32
+// 	numPair, index = writeUB4(packetData, index)
+// 	oracleAuthDataMessagePhaseOne.NUM_PAIR = uint32(numPair)
+// 	index += 2
+// 	if oracleAuthDataMessagePhaseOne.HAS_USER == 1 {
+// 		var bytes []byte
+// 		bytes, index = writeByteAfterLenght(packetData, index)
+// 		oracleAuthDataMessagePhaseOne.USER_BYTES = string(bytes)
+// 	}
+// 	fmt.Println(oracleAuthDataMessagePhaseOne.USER_BYTES)
+
+// 	var authKeyValueList []models.AuthKeyValue
+// 	for i := 0; i < 5; i++ {
+
+// 		_, index = writeUB4(packetData, index)
+// 		var bytes []byte
+// 		bytes, index = writeByteAfterLenght(packetData, index)
+// 		key := string(bytes)
+
+// 		var valueLength uint32
+// 		var value string
+// 		valueLength, index = writeUB4(packetData, index)
+// 		if valueLength > 0 {
+// 			var bytes []byte
+// 			bytes, index = writeByteAfterLenght(packetData, index)
+// 			value = string(bytes)
+// 		}
+
+// 		index += 1
+// 		fmt.Println(value)
+// 		authKeyValueList = append(authKeyValueList, models.AuthKeyValue{
+// 			KEY:   key,
+// 			VALUE: value,
+// 		})
+// 	}
+// 	oracleAuthDataMessagePhaseOne.AUTH_KEY_VALUE = authKeyValueList
+// 	oracleFunctionTypeDataMessage.FUNCTION_DATA = oracleAuthDataMessagePhaseOne
+// 	requestMessage.DATA_MESSAGE = oracleAuthDataMessagePhaseOne
+// 	return requestHeader, requestMessage, false, models.Default, nil
+// }
+
+// func DecodeOracleParamterTypeAuthMessage(Packets [][]byte) (models.OracleHeader, interface{}, bool, models.DataPacketType, error) {
+// 	var packetData []byte
+// 	var packetLength interface{}
+// 	for _, slice := range Packets {
+// 		packetData = append(packetData, slice...)
+// 	}
+// 	if Version >= 315 {
+// 		packetLength = binary.BigEndian.Uint32(packetData[0:])
+// 	} else {
+// 		packetLength = binary.BigEndian.Uint16(packetData[0:])
+// 	}
+// 	requestHeader := models.OracleHeader{
+// 		PacketLength: packetLength,
+// 		PacketType:   network.PacketType(packetData[4]),
+// 		PacketFlag:   packetData[5],
+// 		Version:      Version,
+// 	}
+// 	requestMessage := models.OracleDataMessage{
+// 		DATA_OFFSET:       10,
+// 		DATA_MESSAGE_TYPE: models.OracleParamterTypeAuthMessageType,
+// 	}
+// 	oracleParamterTypeAuthMessage := models.OracleParamterTypeAuthMessage{}
+
+// 	index := 11
+// 	dictSize, index := GetInt(4, true, true, packetData, index)
+// 	for i:= 0; i < int(dictSize); i++ {
+// 		key, val, num, index := GetKeyVal(packetData, index)
+// 		if bytes.Compare(key, []byte("AUTH_SESSKEY")) == 0 {
+// 			if len(ret.EServerSessKey) == 0 {
+// 				ret.EServerSessKey = string(val)
+// 			}
+// 		} else if bytes.Compare(key, []byte("AUTH_VFR_DATA")) == 0 {
+// 			if len(ret.Salt) == 0 {
+// 				ret.Salt = string(val)
+// 				ret.VerifierType = num
+// 			}
+// 		} else if bytes.Compare(key, []byte("AUTH_PBKDF2_CSK_SALT")) == 0 {
+// 			if len(ret.pbkdf2ChkSalt) == 0 {
+// 				ret.pbkdf2ChkSalt = string(val)
+// 				if len(ret.pbkdf2ChkSalt) != 32 {
+// 					return nil, &network.OracleError{
+// 						ErrCode: 28041,
+// 						ErrMsg:  "ORA-28041: Authentication protocol internal error",
+// 					}
+// 				}
+// 			}
+// 		} else if bytes.Compare(key, []byte("AUTH_PBKDF2_VGEN_COUNT")) == 0 {
+// 			if ret.pbkdf2VgenCount == 0 {
+// 				ret.pbkdf2VgenCount, err = strconv.Atoi(string(val))
+// 				if err != nil {
+// 					return nil, &network.OracleError{
+// 						ErrCode: 28041,
+// 						ErrMsg:  "ORA-28041: Authentication protocol internal error",
+// 					}
+// 				}
+// 				if ret.pbkdf2VgenCount < 4096 || ret.pbkdf2VgenCount > 100000000 {
+// 					ret.pbkdf2VgenCount = 4096
+// 				}
+// 			}
+// 		} else if bytes.Compare(key, []byte("AUTH_PBKDF2_SDER_COUNT")) == 0 {
+// 			ret.pbkdf2SderCount, err = strconv.Atoi(string(val))
+// 			if ret.pbkdf2SderCount == 0 {
+// 				if err != nil {
+// 					return nil, &network.OracleError{
+// 						ErrCode: 28041,
+// 						ErrMsg:  "ORA-28041: Authentication protocol internal error",
+// 					}
+// 				}
+// 				if ret.pbkdf2SderCount < 3 || ret.pbkdf2SderCount > 100000000 {
+// 					ret.pbkdf2SderCount = 3
+// 				}
+// 			}
+// 		}
+// 	}
+
+// }
+
+func DecodeExecuteFunctionMessage(Packets [][]byte) (models.OracleHeader, interface{}, bool, models.DataPacketType, error) {
+
+	var packetData []byte
+	var packetLength interface{}
+	for _, slice := range Packets {
+		packetData = append(packetData, slice...)
+	}
+	if Version >= 315 {
+		packetLength = binary.BigEndian.Uint32(packetData[0:])
+	} else {
+		packetLength = binary.BigEndian.Uint16(packetData[0:])
+	}
+	requestHeader := models.OracleHeader{
+		PacketLength: packetLength,
+		PacketType:   network.PacketType(packetData[4]),
+		PacketFlag:   packetData[5],
+		Version:      Version,
+	}
+	requestMessage := models.OracleDataMessage{
+		DATA_OFFSET:       10,
+		DATA_MESSAGE_TYPE: models.OracleFunctionDataMesssageType,
+	}
+
+	oracleFunctionTypeDataMessage := models.OracleFuntionTypeDataMessage{
+		FUNCTION_CODE:   models.FunctionType(packetData[11]),
+		SEQUENCE_NUMBER: packetData[12],
+	}
+
+	oracleQuery := models.OracleQuery{}
+	index := 13
+	oracleQuery.OPTIONS, index = writeUB4(packetData, index)
+	oracleQuery.CURSOR_ID, index = writeUB4(packetData, index)
+	oracleQuery.SQL_LENGTH, index = writeUB4(packetData, index+1)
+	index += 6
+	oracleQuery.ROWS_TO_FETCH, index = writeUB4(packetData, index)
+	index += 2
+	oracleQuery.NUM_PARAMS, index = writeUB4(packetData, index+1)
+	index += 5
+	oracleQuery.NUM_DEFINES, index = writeUB4(packetData, index+1)
+	index += 8
+	oracleQuery.NUM_EXEC, index = writeUB4(packetData, index+1)
+	index += 1
+
+}
+
+func writeUB4(buff []byte, index int) (number uint32, exitIndex int) {
+	switch uint8(buff[index]) {
+	case 0:
+		index += 1
+		number = 0
+	case 1:
+		index += 1
+		number = uint32(uint8(buff[index]))
+		index += 1
+	case 2:
+		index += 2
+		number = uint32(binary.BigEndian.Uint16(buff[index : index+2]))
+		index += 2
+	case 4:
+		index += 4
+		number = binary.BigEndian.Uint32(buff[index : index+4])
+		index += 4
+	}
+	return number, index
+}
+
+func writeByteAfterLenght(buff []byte, index int) (bytes []byte, exitIndex int) {
+	userByteLength := buff[index]
+	index += 1
+	bytes = buff[index : index+int(userByteLength)]
+	index = index + int(userByteLength)
+	return bytes, index
+}
