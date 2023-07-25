@@ -20,6 +20,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.2 // indirect
+	github.com/sijms/go-ora/v2 v2.7.9
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.2 // indirect
 	github.com/wI2L/jsondiff v0.4.0
