@@ -24,8 +24,6 @@ type RequestResponse struct {
 	Responses [][]byte
 }
 
-// var m map[int]RequestResponse
-
 // Determines whether the outgoing packets belong to oracle
 func IsOutgoingOracle(buffer []byte) bool {
 	messageLength := uint32(binary.BigEndian.Uint16(buffer[0:2]))
@@ -34,10 +32,8 @@ func IsOutgoingOracle(buffer []byte) bool {
 
 // Processes the Oracle packets
 func ProcessOraclePackets(reuqestBuffer []byte, clientConn, destConn net.Conn, h *hooks.Hook, logger *zap.Logger, FilterPid *bool, port uint32, kernalPid uint32) {
-
 	switch models.GetMode() {
 	case models.MODE_RECORD:
-		fmt.Println("record mode")
 		err := ReadWriteProtocol(reuqestBuffer, clientConn, destConn, logger, port, FilterPid, kernalPid, h)
 		if err != nil {
 			logger.Error(Emoji+"failed to call next", zap.Error(err))
@@ -53,162 +49,13 @@ func ProcessOraclePackets(reuqestBuffer []byte, clientConn, destConn net.Conn, h
 
 }
 
-// // This function facilitates bidirectional communication by reading packets from both the client and the server,
-// // and subsequently writing the appropriate responses back to both entities. Meanwhile this fuction also creates
-// // mocks in record mode and use mocks in test mode.
-// func ReadWriteProtocol(firstbuffer []byte, clientConn, destConn net.Conn, logger *zap.Logger, port uint32, FilterPid *bool, kernalPid uint32, h *hooks.Hook) error {
-
-// 	fmt.Println(Emoji, "trying to forward requests to target: ", destConn.RemoteAddr().String())
-
-// 	defer destConn.Close()
-
-// 	// Create channels
-// 	destinationWriteChannel := make(chan []byte)
-// 	clientWriteChannel := make(chan []byte)
-
-// 	m = make(map[int]RequestResponse)
-
-// 	// fmt.Println("writing buffer to destination", firstbuffer)
-
-// 	_, err := destConn.Write(firstbuffer)
-// 	if err != nil {
-// 		logger.Error(Emoji+"failed to write request message to the destination server", zap.Error(err))
-// 		return err
-// 	}
-
-// 	go func() {
-// 		for {
-// 			if *FilterPid {
-// 				err, pid := h.GetApplicationPID()
-// 				if err != nil {
-// 					logger.Error(Emoji+"failed to get application pid after filtering")
-// 					return
-// 				}
-// 				if (kernalPid == uint32(pid)) {
-// 						FillUncapturedMocks()
-// 						break
-// 					} else {
-// 						break
-// 					}
-// 			}
-// 		}
-// 	}()
-
-// 	Requests := [][]byte{firstbuffer}
-// 	Responses := make([][]byte, 0)
-// 	isResponseDone := false
-// 	RequestNum := 0
-
-// 	for {
-
-// 		fmt.Println("inside connection")
-
-// 		// go routine to read from client
-// 		go func() {
-// 			buffer, err := util.ReadBytes(clientConn)
-// 			if err != nil {
-// 				logger.Error(Emoji+"failed to read the request message in proxy", zap.Error(err), zap.Any("proxy port", port))
-// 				return
-// 			}
-
-// 			if (!isResponseDone) {
-// 				Requests = append(Requests, buffer)
-// 			} else {
-// 				m[RequestNum] = RequestResponse{
-// 					Requests:  Requests,
-// 					Responses: Responses,
-// 				}
-// 				RequestNum += 1
-// 				isResponseDone = false
-// 				Requests = [][]byte{}
-// 				Responses = [][]byte{}
-// 				Requests = append(Requests, buffer)
-// 			}
-
-// 			// fmt.Println("buffer from client connection")
-// 			// fmt.Println(buffer)
-// 			// fmt.Println(string(buffer))
-// 			destinationWriteChannel <- buffer
-
-// 		}()
-
-// 		// go routine to read from destination
-// 		go func() {
-// 			buffer, err := util.ReadBytes(destConn)
-// 			if err != nil {
-// 				logger.Error(Emoji+"failed to read the request message in proxy", zap.Error(err), zap.Any("proxy port", port))
-// 				return
-// 			}
-// 			isResponseDone = true
-// 			Responses = append(Responses, buffer)
-// 			// fmt.Println("buffer from destination connection")
-// 			// fmt.Println(buffer)
-// 			// fmt.Println(string(buffer))
-// 			clientWriteChannel <- buffer
-// 		}()
-
-// 		select {
-// 		case requestBuffer := <-destinationWriteChannel:
-// 			// Write the request message to the actual destination server
-// 			// fmt.Println("writing buffer to destination", requestBuffer)
-// 			_, err := destConn.Write(requestBuffer)
-// 			if err != nil {
-// 				logger.Error(Emoji+"failed to write request message to the destination server", zap.Error(err))
-// 				return err
-// 			}
-
-// 		case responseBuffer := <-clientWriteChannel:
-// 			// Write the response message to the client
-// 			// fmt.Println("writing buffer to client", responseBuffer)
-// 			_, err := clientConn.Write(responseBuffer)
-// 			if err != nil {
-// 				logger.Error(Emoji+"failed to write response to the client", zap.Error(err))
-// 				return err
-// 			}
-// 			// fmt.Println(Emoji, "Successfully wrote response to the user client ", destConn.RemoteAddr().String())
-
-// 		}
-// 	}
-
-// }
-
 // This function facilitates bidirectional communication by reading packets from both the client and the server,
 // and subsequently writing the appropriate responses back to both entities. Meanwhile this fuction also creates
 // mocks in record mode and use mocks in test mode.
 func ReadWriteProtocol(firstbuffer []byte, clientConn, destConn net.Conn, logger *zap.Logger, port uint32, FilterPid *bool, kernalPid uint32, h *hooks.Hook) error {
 
 	fmt.Println(Emoji, "trying to forward requests to target: ", destConn.RemoteAddr().String())
-
 	defer destConn.Close()
-
-	// _, err := destConn.Write(firstbuffer)
-	// if err != nil {
-	// 	logger.Error(Emoji+"failed to write request message to the destination server", zap.Error(err))
-	// 	return err
-	// }
-
-	// go func() {
-	// 	for {
-	// 		if *FilterPid {
-	// 			err, pid := h.GetApplicationPID()
-	// 			if err != nil {
-	// 				logger.Error(Emoji+"failed to get application pid after filtering")
-	// 				return
-	// 			}
-	// 			if (kernalPid == uint32(pid)) {
-	// 					FillUncapturedMocks()
-	// 					break
-	// 				} else {
-	// 					break
-	// 				}
-	// 		}
-	// 	}
-	// }()
-
-	// Requests := [][]byte{firstbuffer}
-	// Responses := make([][]byte, 0)
-	// isResponseDone := false
-	// RequestNum := 0
 
 	for {
 		fmt.Println("inside connection request")
@@ -283,23 +130,6 @@ func ReadWriteProtocol(firstbuffer []byte, clientConn, destConn net.Conn, logger
 			}
 			fmt.Println(oracleRequests)
 			break
-			// if (!isResponseDone) {
-			// 	Requests = append(Requests, buffer)
-			// } else {
-			// 	m[RequestNum] = RequestResponse{
-			// 		Requests:  Requests,
-			// 		Responses: Responses,
-			// 	}
-			// 	RequestNum += 1
-			// 	isResponseDone = false
-			// 	Requests = [][]byte{}
-			// 	Responses = [][]byte{}
-			// 	Requests = append(Requests, buffer)
-			// }
-
-			// fmt.Println("buffer from client connection")
-			// fmt.Println(buffer)
-			// fmt.Println(string(buffer))
 		}
 
 		for {
@@ -365,60 +195,9 @@ func ReadWriteProtocol(firstbuffer []byte, clientConn, destConn net.Conn, logger
 			}
 			fmt.Println(oracleResponses)
 			break
-
-			// isResponseDone = true
-			// Responses = append(Responses, buffer)
-			// // fmt.Println("buffer from destination connection")
-			// // fmt.Println(buffer)
-			// // fmt.Println(string(buffer))
-			// clientWriteChannel <- buffer
 		}
-
-		// select {
-		// case requestBuffer := <-destinationWriteChannel:
-		// 	// Write the request message to the actual destination server
-		// 	// fmt.Println("writing buffer to destination", requestBuffer)
-		// 	_, err := destConn.Write(requestBuffer)
-		// 	if err != nil {
-		// 		logger.Error(Emoji+"failed to write request message to the destination server", zap.Error(err))
-		// 		return err
-		// 	}
-
-		// case responseBuffer := <-clientWriteChannel:
-		// 	// Write the response message to the client
-		// 	// fmt.Println("writing buffer to client", responseBuffer)
-		// 	_, err := clientConn.Write(responseBuffer)
-		// 	if err != nil {
-		// 		logger.Error(Emoji+"failed to write response to the client", zap.Error(err))
-		// 		return err
-		// 	}
-		// 	// fmt.Println(Emoji, "Successfully wrote response to the user client ", destConn.RemoteAddr().String())
-
-		// }
 	}
-
 }
-
-// func FillUncapturedMocks() {
-
-// 	for key, rr := range m {
-// 		fmt.Printf("Key: %d\n", key)
-// 		fmt.Println("Requests:")
-// 		for i, req := range rr.Requests {
-// 			fmt.Printf("\tRequest %d: %s\n", i, string(req))
-// 			fmt.Println(req)
-
-// 		}
-// 		// fmt.Println(Decode(rr.Requests))
-// 		fmt.Println("Responses:")
-// 		for i, res := range rr.Responses {
-// 			fmt.Printf("\tResponse %d: %s\n", i, string(res))
-// 			fmt.Println(res)
-// 		}
-// 		// Decode(rr.Responses)
-// 		fmt.Println()
-// 	}
-// }
 
 func Decode(Packets [][]byte, dataPacketType models.DataPacketType, isRequest bool) (models.OracleHeader, interface{}, bool, models.DataPacketType, error) {
 	switch network.PacketType(Packets[0][4]) {
@@ -451,7 +230,7 @@ func Decode(Packets [][]byte, dataPacketType models.DataPacketType, isRequest bo
 			return DecodeOracleDataTypeDataMessage(Packets, isRequest)
 		case models.OracleFunctionDataMesssageType:
 			fmt.Println("FUNCTION_TYPE_DATA")
-			return DecodeOracleFunctionDataMessage(Packets, isRequest)
+			return DecodeOracleFunctionDataMessage(Packets)
 		}
 	case network.RESEND:
 		fmt.Println("RESEND")

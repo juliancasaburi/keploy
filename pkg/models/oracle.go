@@ -170,13 +170,35 @@ type OracleFuntionTypeDataMessage struct {
 	SEQUENCE_NUMBER uint8
 }
 
+type OracleFetchFunctionTypeDataMessage struct {
+	CURSOR_ID     int
+	ROWS_TO_FETCH int
+}
+
+type OracleLOBFunctionTypeDataMessage struct {
+	DEST_LENGTH    int
+	SOURCE_LENGTH  int
+	SOURCE_OFF_SET int
+	DEST_OFF_SET   int
+	SEND_SIZE      bool
+	BNullO2U       bool
+	OPERATION_ID   int
+	SCN_LENGTH     int
+	SOURCE_LOCATOR []byte
+	DEST_LOCATOR   []byte
+	CHARSET_ID     int
+	SCN            []int
+	SIZE           int
+	IS_CHARSET_ID  uint8
+}
+
 type OracleRowHeaderTypeDataMessage struct {
 	FLAGS         uint8
 	COLUMN_COUNT  int
 	ITERATION_NUM int
 	ROW_COUNT     int
 	BUFFER_LENGTH int
-	BIT_VECTOR []byte
+	BIT_VECTOR    []byte
 }
 
 type OracleAuthDataMessagePhaseOne struct {
