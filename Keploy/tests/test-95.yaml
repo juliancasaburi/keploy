@@ -1,0 +1,32 @@
+version: api.keploy.io/v1beta2
+kind: Http
+name: test-95
+spec:
+    metadata: {}
+    req:
+        method: GET
+        proto_major: 1
+        proto_minor: 1
+        url: http://localhost:8080/queryData
+        header:
+            Accept: '*/*'
+            User-Agent: curl/7.88.1
+        body: ""
+        body_type: ""
+    resp:
+        status_code: 500
+        header:
+            Content-Length: "83"
+            Content-Type: text/plain; charset=utf-8
+            Date: Mon, 07 Aug 2023 08:22:31 GMT
+            X-Content-Type-Options: nosniff
+        body: |
+            Can't create table: read tcp 172.31.14.213:55114->172.31.14.213:16789: i/o timeout
+        body_type: ""
+        status_message: ""
+        proto_major: 0
+        proto_minor: 0
+    objects: []
+    assertions:
+        noise: []
+    created: 1691398777

@@ -1,0 +1,31 @@
+version: api.keploy.io/v1beta2
+kind: Http
+name: test-64
+spec:
+    metadata: {}
+    req:
+        method: GET
+        proto_major: 1
+        proto_minor: 1
+        url: http://3.108.220.47:8080/
+        header:
+            User-Agent: 'Expanse, a Palo Alto Networks company, searches across the global IPv4 space multiple times per day to identify customers&#39; presences on the Internet. If you would like to be excluded from our scans, please send IP addresses/domains to: scaninfo@paloaltonetworks.com'
+        body: ""
+        body_type: ""
+    resp:
+        status_code: 404
+        header:
+            Content-Length: "19"
+            Content-Type: text/plain; charset=utf-8
+            Date: Fri, 04 Aug 2023 10:01:39 GMT
+            X-Content-Type-Options: nosniff
+        body: |
+            404 page not found
+        body_type: ""
+        status_message: ""
+        proto_major: 0
+        proto_minor: 0
+    objects: []
+    assertions:
+        noise: []
+    created: 1691143299

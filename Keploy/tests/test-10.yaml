@@ -1,0 +1,35 @@
+version: api.keploy.io/v1beta2
+kind: Http
+name: test-10
+spec:
+    metadata: {}
+    req:
+        method: POST
+        proto_major: 1
+        proto_minor: 1
+        url: http://3.108.220.47:8080/phpunit/phpunit/src/Util/PHP/eval-stdin.php
+        header:
+            Accept: '*/*'
+            Accept-Encoding: gzip, deflate
+            Connection: keep-alive
+            Content-Length: "29"
+            User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.82 Safari/537.36
+        body: <?php echo "EmperorsTools";?>
+        body_type: ""
+    resp:
+        status_code: 404
+        header:
+            Content-Length: "19"
+            Content-Type: text/plain; charset=utf-8
+            Date: Fri, 04 Aug 2023 08:41:06 GMT
+            X-Content-Type-Options: nosniff
+        body: |
+            404 page not found
+        body_type: ""
+        status_message: ""
+        proto_major: 0
+        proto_minor: 0
+    objects: []
+    assertions:
+        noise: []
+    created: 1691138467

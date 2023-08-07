@@ -1,0 +1,32 @@
+version: api.keploy.io/v1beta2
+kind: Http
+name: test-66
+spec:
+    metadata: {}
+    req:
+        method: GET
+        proto_major: 1
+        proto_minor: 0
+        url: http:///
+        header:
+            Accept: '*/*'
+            User-Agent: Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.0; Trident/5.0;  Trident/5.0)
+        body: ""
+        body_type: ""
+    resp:
+        status_code: 404
+        header:
+            Content-Length: "19"
+            Content-Type: text/plain; charset=utf-8
+            Date: Fri, 04 Aug 2023 11:05:26 GMT
+            X-Content-Type-Options: nosniff
+        body: |
+            404 page not found
+        body_type: ""
+        status_message: ""
+        proto_major: 0
+        proto_minor: 0
+    objects: []
+    assertions:
+        noise: []
+    created: 1691147126

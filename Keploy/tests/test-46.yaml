@@ -1,0 +1,34 @@
+version: api.keploy.io/v1beta2
+kind: Http
+name: test-46
+spec:
+    metadata: {}
+    req:
+        method: GET
+        proto_major: 1
+        proto_minor: 1
+        url: http://3.108.220.47:8080/local/.env
+        header:
+            Accept: '*/*'
+            Accept-Encoding: '*'
+            Connection: keep-alive
+            User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36
+        body: ""
+        body_type: ""
+    resp:
+        status_code: 404
+        header:
+            Content-Length: "19"
+            Content-Type: text/plain; charset=utf-8
+            Date: Fri, 04 Aug 2023 08:42:40 GMT
+            X-Content-Type-Options: nosniff
+        body: |
+            404 page not found
+        body_type: ""
+        status_message: ""
+        proto_major: 0
+        proto_minor: 0
+    objects: []
+    assertions:
+        noise: []
+    created: 1691138561

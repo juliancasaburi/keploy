@@ -7,8 +7,6 @@ import (
 	"net"
 	"time"
 
-	"github.com/sijms/go-ora/v2/network"
-
 	"go.keploy.io/server/pkg/hooks"
 	"go.keploy.io/server/pkg/models"
 	"go.keploy.io/server/pkg/proxy/util"
@@ -26,8 +24,15 @@ type RequestResponse struct {
 
 // Determines whether the outgoing packets belong to oracle
 func IsOutgoingOracle(buffer []byte) bool {
-	messageLength := uint32(binary.BigEndian.Uint16(buffer[0:2]))
-	return int(messageLength) == len(buffer)
+	messageLength := binary.BigEndian.Uint16(buffer[0:2])
+	if int(messageLength) == len(buffer) {
+		return true
+	} else if int(messageLength) < len(buffer) {
+		var sum = messageLength
+		sum += binary.BigEndian.Uint16(buffer[messageLength : messageLength+2])
+		return int(sum) == len(buffer)
+	}
+	return false
 }
 
 // Processes the Oracle packets
@@ -57,15 +62,16 @@ func ReadWriteProtocol(firstbuffer []byte, clientConn, destConn net.Conn, logger
 	fmt.Println(Emoji, "trying to forward requests to target: ", destConn.RemoteAddr().String())
 	defer destConn.Close()
 
+	var nextRequest [][]byte
+	var nextResponse [][]byte
+	dataPacketType := models.DefaultDataPacket
+	nextDataPacketType := models.DefaultDataPacket
+	var stmt interface{}
 	for {
 		fmt.Println("inside connection request")
 		var (
-			oracleRequests     = []models.OracleRequest{}
-			oracleResponses    = []models.OracleResponse{}
-			dataPacketType     models.DataPacketType
-			nextDataPacketType models.DataPacketType
-			nextRequest        [][]byte
-			nextResponse       [][]byte
+			oracleRequests  = []models.OracleRequest{}
+			oracleResponses = []models.OracleResponse{}
 		)
 		for {
 			started := time.Now()
@@ -90,12 +96,13 @@ func ReadWriteProtocol(firstbuffer []byte, clientConn, destConn net.Conn, logger
 						}
 					} else {
 						clientBuffer = nextRequest[0]
+						nextRequest = nextRequest[:0]
 					}
 				}
 				buffer = append(buffer, clientBuffer)
 				breakStatement, packetNumber, index := recievedAllPackets(buffer)
 				if breakStatement {
-					if packetNumber != 0 && index != 0 {
+					if packetNumber != 0 || index != 0 {
 						buffer, nextRequest, err = cut2DSlice(buffer, packetNumber, index)
 						if err != nil {
 							return err
@@ -106,7 +113,7 @@ func ReadWriteProtocol(firstbuffer []byte, clientConn, destConn net.Conn, logger
 			}
 			fmt.Println("Request")
 			fmt.Println(buffer)
-			requestHeader, requestMessage, continueStatement, nextDataPacketType, err = Decode(buffer, dataPacketType, true)
+			requestHeader, requestMessage, continueStatement, nextDataPacketType, stmt, err = Decode(buffer, dataPacketType, true, nil)
 			if err != nil {
 				logger.Error(Emoji+"failed to read the request message in proxy", zap.Error(err), zap.Any("proxy port", port))
 				return err
@@ -151,16 +158,13 @@ func ReadWriteProtocol(firstbuffer []byte, clientConn, destConn net.Conn, logger
 					}
 				} else {
 					serverBuffer = nextResponse[0]
+					nextResponse = nextResponse[:0]
 				}
-				fmt.Println("this")
-				fmt.Println(serverBuffer)
 				buffer = append(buffer, serverBuffer)
 				breakStatement, packetNumber, index := recievedAllPackets(buffer)
-				fmt.Println(breakStatement, packetNumber, index)
 				if breakStatement {
 					if packetNumber != 0 || index != 0 {
 						buffer, nextResponse, err = cut2DSlice(buffer, packetNumber, index)
-						fmt.Println(buffer, nextResponse)
 						if err != nil {
 							return err
 						}
@@ -170,7 +174,7 @@ func ReadWriteProtocol(firstbuffer []byte, clientConn, destConn net.Conn, logger
 			}
 			fmt.Println("response")
 			fmt.Println(buffer)
-			responseHeader, responseMessage, continueStatement, nextDataPacketType, err = Decode(buffer, dataPacketType, false)
+			responseHeader, responseMessage, continueStatement, nextDataPacketType, stmt, err = Decode(buffer, dataPacketType, false, stmt)
 			if err != nil {
 				logger.Error(Emoji+"failed to read the response message in proxy", zap.Error(err), zap.Any("proxy port", port))
 				return err
@@ -199,21 +203,21 @@ func ReadWriteProtocol(firstbuffer []byte, clientConn, destConn net.Conn, logger
 	}
 }
 
-func Decode(Packets [][]byte, dataPacketType models.DataPacketType, isRequest bool) (models.OracleHeader, interface{}, bool, models.DataPacketType, error) {
-	switch network.PacketType(Packets[0][4]) {
-	case network.CONNECT:
+func Decode(Packets [][]byte, dataPacketType models.DataPacketType, isRequest bool, stmt interface{}) (models.OracleHeader, interface{}, bool, models.DataPacketType, interface{}, error) {
+	switch models.PacketTypeFromUint8(Packets[0][4]) {
+	case models.CONNECT:
 		fmt.Println("CONNECT")
 		return DecodeConnectPacket(Packets, dataPacketType)
-	case network.ACCEPT:
+	case models.ACCEPT:
 		fmt.Println("ACCEPT")
 		return DecodeAcceptPacket(Packets, dataPacketType)
-	case network.REFUSE:
+	case models.REFUSE:
 		fmt.Println("REFUSE")
 		return DecodeRefusePacket(Packets, dataPacketType)
-	case network.REDIRECT:
+	case models.REDIRECT:
 		fmt.Println("REDIRECT")
 		return DecodeRedirectPacket(Packets, dataPacketType)
-	case network.DATA:
+	case models.DATA:
 		fmt.Println("DATA")
 		switch DecodeDataPacketType(dataPacketType, Packets) {
 		case models.OracleConnectionDataMessageType:
@@ -231,30 +235,61 @@ func Decode(Packets [][]byte, dataPacketType models.DataPacketType, isRequest bo
 		case models.OracleFunctionDataMesssageType:
 			fmt.Println("FUNCTION_TYPE_DATA")
 			return DecodeOracleFunctionDataMessage(Packets)
+		case models.OracleAuthPhaseOneDataMessageType:
+			fmt.Println("RESP_AUTH_PHASE_ONE")
+			return DecodeOracleAuthPhaseOneResponse(Packets)
+		case models.OracleAuthPhaseTwoDataMessageType:
+			fmt.Println("RESP_AUTH_PHASE_TWO")
+			return DecodeOracleAuthPhaseTwoResponse(Packets)
+		case models.OraclePiggyBackDataMesssageType:
+			fmt.Println("FUNCTION_PIGGY_BACK")
+			return DecodeOraclePiggyBackDataMessage(Packets)
+		case models.OracleMessageWithDataMessageType:
+			fmt.Println("MESSAGE_WITH_DATA")
+			return DecodeOracleMessageWithData(Packets, stmt)
+		case models.OracleGetDBVersionDataMessageType:
+			fmt.Println("GET_DB_VERSION_RESPONSE")
+			return DecodeOracleGetDBVersion(Packets)
+		default:
+			isAdvNego := checkforAdvanceNego(Packets)
+			if isAdvNego {
+				fmt.Println("ADV_NEGO")
+				return DecodeAdvNegoDataMesssage(Packets, isRequest)
+			} else {
+				return models.OracleHeader{}, nil, false, models.DefaultDataPacket, nil, errors.New("unsupported Message type")
+			}
 		}
-	case network.RESEND:
+	case models.RESEND:
 		fmt.Println("RESEND")
 		return DecodeResendPacket(Packets, dataPacketType)
-	case network.MARKER:
+	case models.MARKER:
 		fmt.Println("MARKER")
 		return DecodeMarkerPacket(Packets, dataPacketType)
-	case network.CTRL:
+	case models.CTRL:
 		fmt.Println("CTRL")
 		return DecodeControlPacket(Packets, dataPacketType)
-	case network.ATTN:
-		return models.OracleHeader{}, nil, false, models.Default, errors.New("unsupported Message type ATTN")
-	case network.HIGHEST:
-		return models.OracleHeader{}, nil, false, models.Default, errors.New("unsupported Message type HIGHEST")
-	case network.ACK:
-		return models.OracleHeader{}, nil, false, models.Default, errors.New("unsupported Message type ACK")
-	case network.NULL:
-		return models.OracleHeader{}, nil, false, models.Default, errors.New("unsupported Message type NULL")
-	case network.ABORT:
-		return models.OracleHeader{}, nil, false, models.Default, errors.New("unsupported Message type ABORT")
+	case models.ATTN:
+		return models.OracleHeader{}, nil, false, models.DefaultDataPacket, nil, errors.New("unsupported Message type ATTN")
+	case models.HIGHEST:
+		return models.OracleHeader{}, nil, false, models.DefaultDataPacket, nil, errors.New("unsupported Message type HIGHEST")
+	case models.ACK:
+		return models.OracleHeader{}, nil, false, models.DefaultDataPacket, nil, errors.New("unsupported Message type ACK")
+	case models.NULL:
+		return models.OracleHeader{}, nil, false, models.DefaultDataPacket, nil, errors.New("unsupported Message type NULL")
+	case models.ABORT:
+		return models.OracleHeader{}, nil, false, models.DefaultDataPacket, nil, errors.New("unsupported Message type ABORT")
 	default:
-		return models.OracleHeader{}, nil, false, models.Default, nil
+		return models.OracleHeader{}, nil, false, models.DefaultDataPacket, nil, errors.New("unsupported Message type ABORT")
 	}
-	return models.OracleHeader{}, nil, false, models.Default, nil
+}
+
+func checkforAdvanceNego(Packets [][]byte) bool {
+	var packetData []byte
+	for _, slice := range Packets {
+		packetData = append(packetData, slice...)
+	}
+	num, _ := session.GetInt64(4, false, true, packetData, 10)
+	return num == 0xDEADBEEF
 }
 
 func recievedAllPackets(Packets [][]byte) (bool, int, int) {
@@ -265,11 +300,9 @@ func recievedAllPackets(Packets [][]byte) (bool, int, int) {
 		lengthOfPacketsProvided = int(binary.BigEndian.Uint16(Packets[0][0:]))
 	}
 	lengthOfPacketsReceived := 0
-	fmt.Println(lengthOfPacketsProvided)
 	for i, packet := range Packets {
 		lengthOfPacketsReceived += len(packet)
 		if lengthOfPacketsReceived > int(lengthOfPacketsProvided) {
-			fmt.Println(len(packet) - (lengthOfPacketsReceived - lengthOfPacketsProvided))
 			return true, i, len(packet) - (lengthOfPacketsReceived - lengthOfPacketsProvided)
 		}
 	}
@@ -281,37 +314,26 @@ func recievedAllPackets(Packets [][]byte) (bool, int, int) {
 }
 
 func DecodeDataPacketType(dataPacketType models.DataPacketType, Packets [][]byte) models.DataPacketType {
-	if dataPacketType != models.Default {
+	if dataPacketType != models.DefaultDataPacket {
 		return dataPacketType
 	} else {
 		var packetData []byte
 		for _, slice := range Packets {
 			packetData = append(packetData, slice...)
 		}
-		switch models.DataPacketType(packetData[10]) {
-		case models.OracleProtocolDataMessageType:
-			return models.OracleProtocolDataMessageType
-		case models.OracleDataTypeDataMessageType:
-			return models.OracleDataTypeDataMessageType
-		case models.OracleFunctionDataMesssageType:
-			return models.OracleFunctionDataMesssageType
-		}
+		return models.DataPacketTypeFromInt(int(packetData[10]))
 	}
-	return models.Default
-
 }
 
 func cut2DSlice(slice [][]byte, row int, col int) ([][]byte, [][]byte, error) {
 	if row < 0 || row >= len(slice) || col < 0 || col >= len(slice[0]) {
 		return nil, nil, fmt.Errorf("invalid row or column index")
 	}
-
 	// Copy the rows above and below the cut point
 	above := make([][]byte, row)
 	below := make([][]byte, len(slice)-row-1)
 	copy(above, slice[:row])
 	copy(below, slice[row+1:])
-
 	// Split the row at the cut point
 	left := make([]byte, col)
 	right := make([]byte, len(slice[0])-col)
@@ -322,9 +344,7 @@ func cut2DSlice(slice [][]byte, row int, col int) ([][]byte, [][]byte, error) {
 			break
 		}
 	}
-
 	above = append(above, left)
 	below = append(below, right)
-
 	return above, below, nil
 }
